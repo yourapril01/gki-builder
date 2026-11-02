@@ -6,17 +6,17 @@ WORKDIR="$(pwd)"
 
 # Validate workflow inputs before using them to select repositories and config.
 case "$KVER" in
-  6.6|5.10) ;;
+  6.12|5.10) ;;
   *)
-    echo "[ERROR] Unsupported KVER '${KVER:-<empty>}'; supported versions are 6.6 and 5.10."
+    echo "[ERROR] Unsupported KVER '${KVER:-<empty>}'; supported versions are 6.12 and 5.10."
     exit 2
     ;;
 esac
 
 case "$VARIANT" in
-  VNL|KSU|KSUS) ;;
+  VNL|KSU|KSUN) ;;
   *)
-    echo "[ERROR] Unsupported VARIANT '${VARIANT:-<empty>}'; choose VNL, KSU, or KSUS."
+    echo "[ERROR] Unsupported VARIANT '${VARIANT:-<empty>}'; choose VNL, KSU, or KSUN."
     exit 2
     ;;
 esac
@@ -29,32 +29,38 @@ case "$TODO" in
     ;;
 esac
 
-if [[ "$KVER" == "6.6" ]]; then
-  RELEASE="v0.3"
+if [[ "$KVER" == "6.12" ]]; then
+  RELEASE="v0.2"
 elif [[ "$KVER" == "5.10" ]]; then
-  RELEASE="v0.7"
+  RELEASE="v0.1"
 fi
 
-KERNEL_NAME="OtagKernel"
-USER="linastorvaldz"
-HOST="gacorprjkt"
-TIMEZONE="Asia/Makassar"
+KERNEL_NAME="RendangKernel"
+USER="yourapril01"
+HOST="indoapril01"
+TIMEZONE="Asia/Jakarta"
 ANYKERNEL_REPO="https://github.com/linastorvaldz/AnyKernel3"
 ANYKERNEL_BRANCH="master"
-KERNEL_DEFCONFIG="gki_defconfig"
 
-if [[ "$KVER" == "6.6" ]]; then
-  KERNEL_REPO="https://github.com/linastorvaldz/kernel-android15-6.6"
-  KERNEL_BRANCH="android15-6.6-lts"
+if [[ "$KVER" == "6.12" ]]; then
+  KERNEL_DEFCONFIG="exynos2100-r9sxxx_defconfig"
 elif [[ "$KVER" == "5.10" ]]; then
-  KERNEL_REPO="https://github.com/linastorvaldz/a12-5.10-new"
-  KERNEL_BRANCH="android12-5.10"
+  KERNEL_DEFCONFIG="r9s_defconfig"
 fi
 
-CONFIG_TO_MERGE="nh.config"
-GKI_RELEASES_REPO="https://github.com/linastorvaldz/OtagKernel-releases"
+if [[ "$KVER" == "6.12" ]]; then
+  KERNEL_REPO="https://github.com/yourapril01/rendang_exynos2100_kernel"
+  KERNEL_BRANCH="Alpha"
+elif [[ "$KVER" == "5.10" ]]; then
+  KERNEL_REPO="https://github.com/Flopster101/velpecula-android_kernel_samsung_r9s-5.10"
+  KERNEL_BRANCH="android13-5.10-lts"
+fi
+
+DEFCONFIG_TO_MERGE=""
+GKI_RELEASES_REPO="https://github.com/yourapril01/RendangKernel_release"
 #CLANG_URL="https://github.com/linastorvaldz/idk/releases/download/clang-r547379/clang.tgz"
-CLANG_URL="https://github.com/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r416183b/archive/refs/heads/lineage-20.0.tar.gz"
+#AOSP_CLANG_VERSION="clang-r596125"
+CLANG_URL="$(curl -s https://api.github.com/repos/Neutron-Toolchains/clang-build-catalogue/releases/latest | grep "browser_download_url.*\.tar\.zst" | cut -d '"' -f 4)"
 CLANG_BRANCH="" # if it's a github repo
 AK3_ZIP_NAME="$KERNEL_NAME-REL-KVER-VARIANT-BUILD_DATE.zip"
 OUTDIR="$WORKDIR/out"
@@ -165,10 +171,10 @@ if susfs_included; then
   log "Applying kernel-side susfs patches"
   SUSFS_DIR="$WORKDIR/susfs"
   SUSFS_PATCHES="${SUSFS_DIR}/kernel_patches"
-  if [[ "$KVER" == "6.6" ]]; then
-    SUSFS_BRANCH=gki-android15-6.6
+  if [[ "$KVER" == "6.12" ]]; then
+    SUSFS_BRANCH=gki-android16-6.12
   elif [[ "$KVER" == "5.10" ]]; then
-    SUSFS_BRANCH=gki-android12-5.10
+    SUSFS_BRANCH=gki-android13-5.10
   fi
   git clone --depth=1 -q https://gitlab.com/simonpunk/susfs4ksu -b "$SUSFS_BRANCH" "$SUSFS_DIR"
   cp -R "$SUSFS_PATCHES"/fs/* ./fs
@@ -208,7 +214,7 @@ fi
 # Declare needed variables
 export KBUILD_BUILD_USER="$USER"
 export KBUILD_BUILD_HOST="$HOST"
-KBUILD_BUILD_TIMESTAMP=$(date)
+KBUILD_BUILD_TIMESTAMP=$(date -R)
 export KBUILD_BUILD_TIMESTAMP
 export KCFLAGS="-w"
 MAKE_ARGS=(
@@ -304,30 +310,6 @@ cp "$KERNEL_IMAGE" .
 zip -r9 "$WORKDIR/$AK3_ZIP_NAME" ./*
 cd "$OLDPWD"
 
-# realtek wireless modules
-log "Extracting wireless modules..."
-wmod="$WORKDIR/modules/wireless_modules"
-wmod_zipn="WirelessModules.zip"
-mkdir -p "$wmod/lkm"
-mkdir -p "$wmod/system/etc/firmware/rtw88"
-
-cd "$wmod"
-
-if [ -d "$OUTDIR/drivers/net/wireless/realtek/rtw88" ]; then
-  for mod in rfkill cfg80211 mac80211; do
-    find $OUTDIR/ -iname "$mod*.ko" -exec cp {} $wmod/lkm/ \; 2> /dev/null || true
-  done
-
-  find $OUTDIR/drivers/net/wireless/realtek/rtw88 -name "*.ko" -exec cp {} $wmod/lkm/ \;
-
-  cp $KSRC/drivers/net/wireless/realtek/rtw88/firmware/* "$wmod/system/etc/firmware/rtw88"
-  ls -la $wmod/lkm/
-  ls -la $wmod/system/etc/firmware/rtw88
-  zip -r9 "$WORKDIR/$wmod_zipn" ./*
-fi
-
-cd "$WORKDIR"
-
 if [[ $STATUS != "BETA" ]]; then
   echo "BASE_NAME=$KERNEL_NAME-$VARIANT" >> "$GITHUB_ENV"
   mkdir -p "$WORKDIR/artifacts"
@@ -347,7 +329,6 @@ fi
 
 if [[ $STATUS == "BETA" ]]; then
   upload_file "$WORKDIR/$AK3_ZIP_NAME" "$text"
-  upload_file "$WORKDIR/$wmod_zipn" "Realtek Wireless Modules for Nethunter."
   upload_file "$WORKDIR/build.log"
 else
   send_msg "✅ Build Succeeded for $VARIANT variant."

@@ -1,4 +1,4 @@
-name: Release Build - android12-5.10
+name: Release Build - android13-5.10
 
 on:
   workflow_dispatch:

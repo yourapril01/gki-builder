@@ -1,4 +1,4 @@
-name: Release Build - android15-6.6
+name: Release Build - android16-6.12
 
 on:
   workflow_dispatch:
@@ -23,7 +23,7 @@ jobs:
       KSU_SUSFS: ${{ matrix.variant.KSU_SUSFS }}
       LAST_BUILD: ${{ matrix.variant.LAST_BUILD }}
       TODO: "kernel"
-      KERNEL_VERSION: "6.6"
+      KERNEL_VERSION: "6.12"
 
   release:
     name: Create Unified Release

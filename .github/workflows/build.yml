@@ -34,7 +34,7 @@ on:
         default: "5.10"
         type: choice
         options:
-          - "6.6"
+          - "6.12"
           - "5.10"
 
 env:
